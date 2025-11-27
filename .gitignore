@@ -1,0 +1,12 @@
+# Terraform
+/.terraform/
+/*.tfstate
+*.tfstate.backup
+*.tfvars
+*.pem
+*.key
+id_rsa
+*.ppk
+
+# OS files
+.DS_Store
