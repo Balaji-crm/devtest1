@@ -6,10 +6,10 @@ pipeline {
     SSH_CRED_ID = 'terraform-ssh-creds'
 
     // Remote host details - replace with actual host/IP or set as Job/Global variables
-    TF_HOST = 'YOUR_TERRAFORM_HOST_IP_OR_DNS'
-    TF_USER = 'ubuntu'                       // remote user account
-    REPO_URL = 'git@github.com:<your-org>/<repo>.git'  // repo on remote to git clone/pull
-    REPO_DIR = '/home/ubuntu/terraform_workdir'        // dir on remote to keep repo
+    TF_HOST = '192.168.1.143'
+    TF_USER = 'ubuntu'     // or ec2-user (depends on AMI)
+    REPO_URL = 'https://github.com/Balaji-crm/devtest1.git'
+    REPO_DIR = '/home/ubuntu/day1'   // choose a folder
     // Optional: If you store AWS creds in Jenkins, set those credential IDs here:
     AWS_KEY_ID_CRED = 'aws-access-key-id'             // optional secret-text ID
     AWS_SECRET_CRED = 'aws-secret-access-key'         // optional secret-text ID
