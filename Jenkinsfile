@@ -2,17 +2,17 @@ pipeline {
   agent any
 
   environment {
-    // Jenkins SSH credential ID (SSH Username with private key)
+    // Jenkins SSH credential ID (SSH Username with private key) - must match exactly the Jenkins credential ID
     SSH_CRED_ID = 'terraform-ssh-creds'
 
-    // Remote host details - replace with actual host/IP or set as Job/Global variables
-    TF_HOST = '192.168.1.143'
-    TF_USER = 'ubuntu'     // or ec2-user (depends on AMI)
+    // Remote host details - set to the correct host/IP
+    TF_HOST = '192.168.1.143'   // <- confirm this: .142 vs .143
+    TF_USER = 'ubuntu'          // remote user
     REPO_URL = 'https://github.com/Balaji-crm/devtest1.git'
-    REPO_DIR = '/home/ubuntu/day1'   // choose a folder
-    // Optional: If you store AWS creds in Jenkins, set those credential IDs here:
-    AWS_KEY_ID_CRED = 'aws-access-key-id'             // optional secret-text ID
-    AWS_SECRET_CRED = 'aws-secret-access-key'         // optional secret-text ID
+    REPO_DIR = '/home/ubuntu/day1'
+    // Optional: Jenkins string credential IDs for AWS (if you use them)
+    AWS_KEY_ID_CRED = 'aws-access-key-id'
+    AWS_SECRET_CRED = 'aws-secret-access-key'
   }
 
   options { timestamps() }
@@ -20,9 +20,13 @@ pipeline {
   stages {
     stage('Validate connectivity') {
       steps {
-        echo "Testing SSH connectivity to ${env.TF_USER}@${env.TF_HOST}"
+        echo "Testing SSH connectivity to ${TF_USER}@${TF_HOST}"
         sshagent (credentials: [env.SSH_CRED_ID]) {
-          sh "ssh -o StrictHostKeyChecking=no ${env.TF_USER}@${env.TF_HOST} 'echo connected: \$(whoami)@\$(hostname)'"
+          // Show loaded identities for debugging
+          sh 'ssh-add -l || true'
+
+          // Run a connectivity check on the remote host
+          sh "ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} 'echo CONNECTED: \$(whoami)@\$(hostname)'"
         }
       }
     }
@@ -30,9 +34,9 @@ pipeline {
     stage('Update Terraform repo on remote') {
       steps {
         sshagent (credentials: [env.SSH_CRED_ID]) {
-          // clone if missing, else pull
+          // Use a GString (""" ... """) so Groovy variables expand before sending to the shell.
           sh """
-            ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} <<'SSH_EOF'
+            ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} <<'REMOTE_EOF'
               set -e
               mkdir -p ${REPO_DIR}
               cd ${REPO_DIR}
@@ -44,10 +48,10 @@ pipeline {
                 echo "Cloning repo"
                 git clone ${REPO_URL} .
               fi
-              # Ensure correct branch if you want specific branch (e.g., main)
+              # Ensure correct branch
               git checkout -f main || true
               git pull || true
-SSH_EOF
+REMOTE_EOF
           """
         }
       }
@@ -55,36 +59,34 @@ SSH_EOF
 
     stage('Terraform Init & Plan on remote') {
       steps {
-        // Inject AWS env vars if you stored them in Jenkins credentials (optional)
+        // If AWS creds present in Jenkins, make them available for the remote commands.
         script {
-          def awsKey = ''
-          def awsSecret = ''
-          if (credentialsExists(AWS_KEY_ID_CRED) && credentialsExists(AWS_SECRET_CRED)) {
-            // Use withCredentials to bind secrets as env vars
-            withCredentials([string(credentialsId: AWS_KEY_ID_CRED, variable: 'AWS_ACCESS_KEY_ID'),
-                             string(credentialsId: AWS_SECRET_CRED, variable: 'AWS_SECRET_ACCESS_KEY')]) {
+          if (AWS_KEY_ID_CRED?.trim() && AWS_SECRET_CRED?.trim()) {
+            withCredentials([string(credentialsId: AWS_KEY_ID_CRED, variable: 'J_AWS_ACCESS_KEY_ID'),
+                             string(credentialsId: AWS_SECRET_CRED, variable: 'J_AWS_SECRET_ACCESS_KEY')]) {
               sshagent (credentials: [env.SSH_CRED_ID]) {
+                // Variables J_AWS_* will be expanded into the SSH command and exported on remote
                 sh """
-                  ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} <<'SSH_EOF'
+                  ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} <<'REMOTE_EOF'
                     set -e
                     cd ${REPO_DIR}
-                    # export creds for this shell (only for this run)
-                    export AWS_ACCESS_KEY_ID='${env.AWS_ACCESS_KEY_ID}'
-                    export AWS_SECRET_ACCESS_KEY='${env.AWS_SECRET_ACCESS_KEY}'
+                    # Export AWS creds for this shell (they were interpolated into the command)
+                    export AWS_ACCESS_KEY_ID="${J_AWS_ACCESS_KEY_ID}"
+                    export AWS_SECRET_ACCESS_KEY="${J_AWS_SECRET_ACCESS_KEY}"
                     terraform init -input=false
                     terraform validate
                     terraform plan -input=false -out=tfplan
                     terraform show -no-color tfplan > plan.txt
-                    echo "PLAN-SAVED:/${REPO_DIR}/plan.txt"
-SSH_EOF
+                    echo "PLAN-SAVED:${REPO_DIR}/plan.txt"
+REMOTE_EOF
                 """
               }
             }
           } else {
-            // No AWS creds passed from Jenkins; rely on remote's IAM role or local creds on the remote server
+            // No AWS creds from Jenkins; rely on remote environment/role
             sshagent (credentials: [env.SSH_CRED_ID]) {
               sh """
-                ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} <<'SSH_EOF'
+                ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} <<'REMOTE_EOF'
                   set -e
                   cd ${REPO_DIR}
                   terraform init -input=false
@@ -92,16 +94,15 @@ SSH_EOF
                   terraform plan -input=false -out=tfplan
                   terraform show -no-color tfplan > plan.txt
                   echo "PLAN-SAVED:${REPO_DIR}/plan.txt"
-SSH_EOF
+REMOTE_EOF
               """
             }
           }
         }
-        // Optionally retrieve and archive the plan.txt from remote for inspection
+
+        // Retrieve plan.txt from remote and archive it
         sshagent (credentials: [env.SSH_CRED_ID]) {
-          sh """
-            scp -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST}:${REPO_DIR}/plan.txt .
-          """
+          sh "scp -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST}:${REPO_DIR}/plan.txt . || true"
           archiveArtifacts artifacts: 'plan.txt', fingerprint: true
         }
       }
@@ -115,14 +116,13 @@ SSH_EOF
 
     stage('Terraform Apply on remote') {
       steps {
-        // Run apply on remote using the plan created earlier
         sshagent (credentials: [env.SSH_CRED_ID]) {
           sh """
-            ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} <<'SSH_EOF'
+            ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} <<'REMOTE_EOF'
               set -e
               cd ${REPO_DIR}
               terraform apply -input=false tfplan
-SSH_EOF
+REMOTE_EOF
           """
         }
       }
@@ -132,14 +132,5 @@ SSH_EOF
   post {
     success { echo "Terraform run completed successfully." }
     failure { echo "Terraform run failed — check console logs and remote machine state." }
-  }
-}
-
-// helper to check credential presence (groovy)
-def credentialsExists(id) {
-  try {
-    return id != null && id != ''
-  } catch (e) {
-    return false
   }
 }
