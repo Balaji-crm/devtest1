@@ -6,10 +6,10 @@ pipeline {
     SSH_CRED_ID = 'terraform-ssh-creds'
 
     // Remote host details - set to the correct host/IP
-    TF_HOST = '192.168.1.142'   // <- confirm this: .142 vs .143
+    TF_HOST = '192.168.1.165'   // <- confirm this: .142 vs .143
     TF_USER = 'ubuntu'          // remote user
     REPO_URL = 'https://github.com/Balaji-crm/devtest1.git'
-    REPO_DIR = '/home/ubuntu/day1'
+    REPO_DIR = '/home/ubuntu/terraform'
     // Optional: Jenkins string credential IDs for AWS (if you use them)
     AWS_KEY_ID_CRED = 'aws-access-key-id'
     AWS_SECRET_CRED = 'aws-secret-access-key'
