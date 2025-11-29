@@ -6,7 +6,7 @@ pipeline {
     SSH_CRED_ID = 'terraform-ssh-creds'
 
     // Remote host details - set to the correct host/IP
-    TF_HOST = '43.205.99.219'   // <- confirm this: .142 vs .143
+    TF_HOST = '192.168.1.165'   // <- confirm this: .142 vs .143
     TF_USER = 'ubuntu'          // remote user
     REPO_URL = 'https://github.com/Balaji-crm/devtest1.git'
     REPO_DIR = '/home/ubuntu/terraform'
