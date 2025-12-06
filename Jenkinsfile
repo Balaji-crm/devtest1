@@ -1,5 +1,5 @@
 pipeline {
-    agent { terra }
+    agent { label 'terra' }
 
   environment {
     // Jenkins SSH credential ID (SSH Username with private key) - must match exactly the Jenkins credential ID
