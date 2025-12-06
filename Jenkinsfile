@@ -35,46 +35,50 @@ pipeline {
       }
     }
 
-    stage('Update Terraform repo on remote') {
-      steps {
-        // Use GitHub token from Jenkins credentials
-        withCredentials([usernamePassword(credentialsId: env.GITHUB_CRED_ID,
-                                          usernameVariable: 'GUSER',
-                                          passwordVariable: 'GTOKEN')]) {
-          sshagent (credentials: [env.SSH_CRED_ID]) {
-            sh """
-              ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} << EOF
-                set -e
+  stage('Update Terraform repo on remote') {
+  steps {
+    // Use GitHub token from Jenkins credentials
+    withCredentials([usernamePassword(credentialsId: env.GITHUB_CRED_ID,
+                                      usernameVariable: 'GUSER',
+                                      passwordVariable: 'GTOKEN')]) {
+      sshagent (credentials: [env.SSH_CRED_ID]) {
+        sh """
+          ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} << EOF
+            set -e
 
-                REPO_DIR="${REPO_DIR}"
-                REPO_URL="https://\$GUSER:\$GTOKEN@github.com/Balaji-crm/devtest1.git"
+            REPO_DIR="${REPO_DIR}"
+            REPO_URL="https://${GUSER}:${GTOKEN}@github.com/Balaji-crm/devtest1.git"
 
-                echo "Using repo URL with token (masked in Jenkins logs)"
+            echo "Using repo URL with token (masked in Jenkins logs)"
 
-                mkdir -p "\${REPO_DIR}"
-                cd "\${REPO_DIR}"
+            # Make sure directory exists and belongs to ${TF_USER}
+            sudo mkdir -p "\${REPO_DIR}"
+            sudo chown -R ${TF_USER}:${TF_USER} "\${REPO_DIR}"
+            cd "\${REPO_DIR}"
 
-                if [ -d .git ]; then
-                  echo "Repo exists — fetching latest from origin/main"
-                  git fetch --all
-                  git reset --hard origin/main || git reset --hard origin/HEAD
-                else
-                  echo "Cloning repo into \${REPO_DIR}"
-                  rm -rf ./*
-                  git clone "\${REPO_URL}" .
-                fi
+            if [ -d .git ]; then
+              echo "Repo exists — fetching latest from origin/main"
+              git fetch --all
+              git reset --hard origin/main || git reset --hard origin/HEAD
+            else
+              echo "Cloning repo into \${REPO_DIR}"
+              # Clean directory contents (ignore errors)
+              rm -rf ./* .[!.]* 2>/dev/null || true
+              git clone "\${REPO_URL}" .
+            fi
 
-                git checkout -f main || true
-                git pull --ff-only || true
+            git checkout -f main || true
+            git pull --ff-only || true
 
-                echo "Current HEAD:"
-                git rev-parse HEAD
+            echo "Current HEAD:"
+            git rev-parse HEAD
 EOF
-            """
-          }
-        }
+        """
       }
     }
+  }
+}
+
 
     stage('Terraform Init & Plan on remote') {
       steps {
