@@ -46,7 +46,7 @@ pipeline {
                 git reset --hard origin/HEAD
               else
                 echo "Cloning repo"
-                git clone ${REPO_URL} .
+                git clone ${REPO_URL}
               fi
               # Ensure correct branch
               git checkout -f main || true
