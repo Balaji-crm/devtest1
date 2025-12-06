@@ -8,7 +8,7 @@ pipeline {
     // Remote host details - set to the correct host/IP
     TF_HOST = '13.233.197.159'   // <- confirm this: .142 vs .143
     TF_USER = 'ubuntu'          // remote user
-    REPO_URL = 'https://github.com/Balaji-crm/devtest1.git'
+    REPO_URL = 'https://github.com/Balaji-crm/devtest1.git .'
     REPO_DIR = '/home/ubuntu/terra'
     // Optional: Jenkins string credential IDs for AWS (if you use them)
     AWS_KEY_ID_CRED = 'aws-access-key-id'
