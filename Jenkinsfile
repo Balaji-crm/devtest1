@@ -5,8 +5,6 @@ pipeline {
             customWorkspace '/var/jenkins/workspaces/test'
         }
     }
-}
-
 
   environment {
     // Jenkins SSH credential ID (SSH Username with private key) - must match exactly the Jenkins credential ID
