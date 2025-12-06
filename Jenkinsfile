@@ -1,10 +1,6 @@
 pipeline {
     agent {
-        node {
-            label 'terra'
-            customWorkspace '/var/jenkins/workspaces/test'
-        }
-    }
+        node { terra }
 
   environment {
     // Jenkins SSH credential ID (SSH Username with private key) - must match exactly the Jenkins credential ID
