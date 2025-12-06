@@ -10,7 +10,7 @@ pipeline {
     TF_USER       = 'ubuntu'
 
     // GitHub credentials (Username + Password/Token)
-    GITHUB_CRED_ID = 'github-token'   // <-- Jenkins credential with your GitHub PAT
+    GITHUB_CRED_ID = 'gitid'   // <-- Jenkins credential with your GitHub PAT
 
     // Repo + directory on the remote VM
     REPO_URL      = 'https://github.com/Balaji-crm/devtest1.git'
