@@ -36,10 +36,37 @@ EOF
                 }
             }
         }
+
+        stage('Step 2: Test GitHub SSH Access') {
+            steps {
+                echo "Testing GitHub SSH access from remote server..."
+
+                sshagent (credentials: [env.SSH_CRED_ID]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${TF_USER}@${TF_HOST} << 'EOF'
+                            set -e
+
+                            echo "== Testing GitHub SSH authentication =="
+                            ssh -T git@github.com || true
+
+                            echo "If you see:"
+                            echo "  'Hi username! You’ve successfully authenticated'"
+                            echo "then SSH auth is working."
+
+                            echo "If you see:"
+                            echo "  'Permission denied (publickey)'"
+                            echo "then the deploy key is NOT installed on GitHub."
+
+                            echo "STEP 2 COMPLETED"
+EOF
+                    """
+                }
+            }
+        }
     }
 
     post {
-        success { echo "Step 1 completed successfully." }
-        failure { echo "Step 1 failed — check logs." }
+        success { echo "Step 1 + Step 2 completed successfully." }
+        failure { echo "Step 2 failed — check logs." }
     }
 }
