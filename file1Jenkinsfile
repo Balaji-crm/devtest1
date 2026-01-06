@@ -6,7 +6,7 @@ pipeline {
     SSH_CRED_ID   = 'terraid'
 
     // Remote host details
-    TF_HOST       = '13.233.197.159'
+    TF_HOST       = '172.31.10.139'
     TF_USER       = 'ubuntu'
 
     // GitHub credentials (Username + Password/Token)
