@@ -1,0 +1,49 @@
+pipeline {
+    agent none
+
+    environment {
+        TF_IN_AUTOMATION = "true"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            agent { label 'terraform' }
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/<your-username>/<your-repo>.git'
+            }
+        }
+
+        stage('Terraform Init') {
+            agent { label 'terraform' }
+            steps {
+                sh '''
+                  terraform --version
+                  terraform init
+                '''
+            }
+        }
+
+        stage('Terraform Validate') {
+            agent { label 'terraform' }
+            steps {
+                sh 'terraform validate'
+            }
+        }
+
+        stage('Terraform Plan') {
+            agent { label 'terraform' }
+            steps {
+                sh 'terraform plan'
+            }
+        }
+
+        stage('Terraform Apply') {
+            agent { label 'terraform' }
+            steps {
+                sh 'terraform apply -auto-approve'
+            }
+        }
+    }
+}
